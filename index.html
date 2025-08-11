@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chi-Square Expected Frequency Practice</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #fafafa;
+    color: #222;
+  }
+  h1, h2 {
+    text-align: center;
+    color: #2c3e50;
+  }
+  .definition-box {
+    max-width: 650px;
+    background: #e8f0fe;
+    border-left: 6px solid #4285f4;
+    margin: 0 auto 25px auto;
+    padding: 15px 20px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .controls {
+    max-width: 650px;
+    margin: 0 auto 30px auto;
+    text-align: center;
+  }
+  select, button {
+    font-size: 14px;
+    padding: 7px 12px;
+    margin: 6px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1.5px solid #4285f4;
+    background: white;
+    color: #4285f4;
+    transition: background 0.3s, color 0.3s;
+  }
+  select:hover, button:hover {
+    background: #4285f4;
+    color: white;
+  }
+  table {
+    border-collapse: collapse;
+    margin: 10px auto 40px auto;
+    background: white;
+    box-shadow: 0 0 8px rgba(0,0,0,0.08);
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    min-width: 70px;
+    text-align: center;
+    vertical-align: middle;
+    position: relative;
+  }
+  th {
+    background: #f2f6fb;
+    font-weight: 600;
+  }
+  input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+  .hint-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    user-select: none;
+  }
+  .hint-text {
+    display: none;
+    background: #f7f7f7;
+    border: 1px solid #bbb;
+    padding: 6px 8px;
+    font-size: 12px;
+    margin-top: 6px;
+    border-radius: 3px;
+    text-align: center;
+  }
+  .correct {
+    background-color: #d3f8d3 !important;
+  }
+  .incorrect {
+    background-color: #f8d3d3 !important;
+  }
+  .btn-group {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Chi-Square Expected Frequency Practice</h1>
+
+<div class="definition-box">
+  <strong>Observed Frequency (O):</strong> The actual count recorded in each category.<br />
+  <strong>Expected Frequency (E):</strong> The theoretical count assuming independence of variables.<br /><br />
+  <strong>Formula:</strong> <br />
+  <span style="font-family: serif; font-size: 17px;">E<sub>ij</sub> = (Row Total × Column Total) ÷ Grand Total</span>
+</div>
+
+<div class="controls">
+  <label for="tableSize"><strong>Select Table Size:</strong> </label>
+  <select id="tableSize">
+    <option value="2x2">2 × 2</option>
+    <option value="2x3">2 × 3</option>
+    <option value="3x2">3 × 2</option>
+    <option value="3x3">3 × 3</option>
+    <option value="3x4">3 × 4</option>
+    <option value="4x3">4 × 3</option>
+    <option value="4x4">4 × 4</option>
+    <option value="4x5">4 × 5</option>
+    <option value="5x4">5 × 4</option>
+    <option value="5x5">5 × 5</option>
+  </select>
+
+  <label for="difficulty"><strong>Select Difficulty:</strong> </label>
+  <select id="difficulty">
+    <option value="easy">Easy (1–9 digits, EF whole numbers)</option>
+    <option value="moderate">Moderate (multiples of 10, EF whole numbers)</option>
+    <option value="difficult">Difficult (two-digit mixed, EF decimals allowed)</option>
+  </select>
+
+  <button id="generateBtn">Generate Random Data</button>
+</div>
+
+<div id="observedTableContainer"></div>
+
+<div id="expectedTableContainer"></div>
+
+<div class="btn-group">
+  <button id="checkBtn">Check Answers</button>
+  <button id="revealBtn">Reveal Answers</button>
+</div>
+
+<script>
+(() => {
+  // Meaningful variable pairs (avoid stigma, logical pairs)
+  const variablePairs = [
+    {
+      rowVar: "Nationality",
+      rowCats: ["Indian", "American", "Russian", "Brazilian", "Japanese"],
+      colVar: "Beverage",
+      colCats: ["Tea", "Coffee", "Soda", "Milkshake", "Juice"]
+    },
+    {
+      rowVar: "Gender",
+      rowCats: ["Male", "Female", "Other"],
+      colVar: "Preferred Transport",
+      colCats: ["Car", "Bicycle", "Bus", "Walk"]
+    },
+    {
+      rowVar: "Age Group",
+      rowCats: ["18-25", "26-35", "36-50", "50+"],
+      colVar: "Meal Type",
+      colCats: ["Vegetarian", "Non-Vegetarian", "Vegan", "Pescatarian"]
+    },
+    {
+      rowVar: "Education Level",
+      rowCats: ["High School", "Bachelor's", "Master's", "PhD", "Other"],
+      colVar: "Course Preference",
+      colCats: ["Science", "Commerce", "Arts", "Engineering", "Law"]
+    },
+    {
+      rowVar: "Region",
+      rowCats: ["Urban", "Suburban", "Rural"],
+      colVar: "Internet Usage",
+      colCats: ["Daily", "Weekly", "Monthly"]
+    }
+  ];
+
+  let selectedPair = null;
+  let observedData = [];
+  let expectedData = [];
+  let rowTotalsObs = [];
+  let colTotalsObs = [];
+  let grandTotalObs = 0;
+
+  let rowTotalsExp = [];
+  let colTotalsExp = [];
+  let grandTotalExp = 0;
+
+  // Helpers
+  const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const getRandomMultipleOf10 = (min, max) => 10 * getRandomInt(min/10, max/10);
+  const getRandomFloat = (min, max) => +(Math.random() * (max - min) + min).toFixed(1);
+
+  // Generate observed data ensuring expected frequency rules:
+  // Easy: 1-9 digits, EF whole number
+  // Moderate: multiples of 10, EF whole number
+  // Difficult: 2-digit odd/even, EF decimals allowed
+  function generateObservedData(rows, cols, difficulty) {
+    let data = [];
+    let valid = false;
+    let attempts = 0;
+
+    while (!valid && attempts < 1000) {
+      data = [];
+      rowTotalsObs = new Array(rows).fill(0);
+      colTotalsObs = new Array(cols).fill(0);
+      grandTotalObs = 0;
+
+      for(let i=0; i<rows; i++){
+        data[i] = [];
+        for(let j=0; j<cols; j++){
+          if(difficulty === "easy"){
+            let val = getRandomInt(1, 9);
+            data[i][j] = val;
+            rowTotalsObs[i] += val;
+            colTotalsObs[j] += val;
+            grandTotalObs += val;
+          }
+          else if(difficulty === "moderate"){
+            let val = getRandomMultipleOf10(10, 90);
+            data[i][j] = val;
+            rowTotalsObs[i] += val;
+            colTotalsObs[j] += val;
+            grandTotalObs += val;
+          }
+          else{
+            // difficult: 10 to 99 odd or even, mixed decimal possible after expected freq calc
+            let val = getRandomInt(10, 99);
+            data[i][j] = val;
+            rowTotalsObs[i] += val;
+            colTotalsObs[j] += val;
+            grandTotalObs += val;
+          }
+        }
+      }
+
+      // Now check if expected frequencies for easy/moderate are whole numbers (within 0.01 tolerance)
+      if(difficulty !== "difficult"){
+        let isWhole = true;
+        for(let i=0; i<rows; i++){
+          for(let j=0; j<cols; j++){
+            let ef = (rowTotalsObs[i] * colTotalsObs[j]) / grandTotalObs;
+            if(Math.abs(ef - Math.round(ef)) > 0.01){
+              isWhole = false;
+              break;
+            }
+          }
+          if(!isWhole) break;
+        }
+        if(isWhole) valid = true;
+      } else {
+        valid = true;
+      }
+      attempts++;
+    }
+    return data;
+  }
+
+  function renderObservedTable(){
+    const {rowVar, rowCats, colVar, colCats} = selectedPair;
+    const rows = observedData.length;
+    const cols = observedData[0].length;
+
+    let html = `<h2>Observed Frequencies (${rowVar} vs ${colVar})</h2><table><thead><tr><th>${rowVar} \\ ${colVar}</th>`;
+    for(let j=0; j<cols; j++){
+      html += `<th>${colCats[j]}</th>`;
+    }
+    html += `<th>Total</th></tr></thead><tbody>`;
+
+    for(let i=0; i<rows; i++){
+      html += `<tr><th>${rowCats[i]}</th>`;
+      let rowSum = 0;
+      for(let j=0; j<cols; j++){
+        let val = observedData[i][j];
+        html += `<td>${val}</td>`;
+        rowSum += val;
+      }
+      html += `<td>${rowSum}</td></tr>`;
+    }
+
+    // Column totals
+    html += `<tr><th>Total</th>`;
+    for(let j=0; j<cols; j++){
+      let colSum = 0;
+      for(let i=0; i<rows; i++){
+        colSum += observedData[i][j];
+      }
+      html += `<td>${colSum}</td>`;
+    }
+    html += `<td>${grandTotalObs}</td></tr>`;
+
+    html += `</tbody></table>`;
+    document.getElementById("observedTableContainer").innerHTML = html;
+  }
+
+  function renderExpectedTable(){
+    const {rowVar, rowCats, colVar, colCats} = selectedPair;
+    const rows = observedData.length;
+    const cols = observedData[0].length;
+
+    let html = `<h2>Expected Frequencies (Calculate and Fill Below)</h2><table><thead><tr><th>${rowVar} \\ ${colVar}</th>`;
+    for(let j=0; j<cols; j++){
+      html += `<th>${colCats[j]}</th>`;
+    }
+    html += `<th>Row Total</th></tr></thead><tbody>`;
+
+    rowTotalsExp = new Array(rows).fill(null);
+    colTotalsExp = new Array(cols).fill(null);
+    grandTotalExp = null;
+
+    for(let i=0; i<rows; i++){
+      html += `<tr><th>${rowCats[i]}</th>`;
+      for(let j=0; j<cols; j++){
+        // formula hint with values
+        const formulaStr = `(${rowTotalsObs[i]} × ${colTotalsObs[j]}) ÷ ${grandTotalObs}`;
+        html += `<td>
+          <input type="number" step="any" id="exp-${i}-${j}" style="width:60px" />
+          <button class="hint-btn" onclick="toggleHint(${i},${j})" title="Toggle Hint">💡</button>
+          <div class="hint-text" id="hint-${i}-${j}">${formulaStr}</div>
+        </td>`;
+      }
+      // Marginal row total input
+      html += `<td><input type="number" step="any" id="rowTotalExp-${i}" style="width:80px" placeholder="Row Total" /></td>`;
+      html += `</tr>`;
+    }
+
+    // Marginal column totals + grand total row
+    html += `<tr><th>Column Total</th>`;
+    for(let j=0; j<cols; j++){
+      html += `<td><input type="number" step="any" id="colTotalExp-${j}" style="width:60px" placeholder="Col Total" /></td>`;
+    }
+    html += `<td><input type="number" step="any" id="grandTotalExp" style="width:80px" placeholder="Grand Total" /></td></tr>`;
+
+    html += `</tbody></table>`;
+
+    document.getElementById("expectedTableContainer").innerHTML = html;
+  }
+
+  window.toggleHint = function(i,j){
+    const hintDiv = document.getElementById(`hint-${i}-${j}`);
+    if(hintDiv.style.display === "block"){
+      hintDiv.style.display = "none";
+    } else {
+      hintDiv.style.display = "block";
+    }
+  }
+
+  function checkAnswers(){
+    const rows = observedData.length;
+    const cols = observedData[0].length;
+
+    // Check EF cells
+    for(let i=0; i<rows; i++){
+      for(let j=0; j<cols; j++){
+        let expectedVal = (rowTotalsObs[i] * colTotalsObs[j]) / grandTotalObs;
+        if(document.getElementById(`exp-${i}-${j}`)){
+          let inputVal = parseFloat(document.getElementById(`exp-${i}-${j}`).value);
+          if(inputVal !== undefined && !isNaN(inputVal)){
+            if(Math.abs(inputVal - expectedVal) < 0.01){
+              document.getElementById(`exp-${i}-${j}`).classList.add("correct");
+              document.getElementById(`exp-${i}-${j}`).classList.remove("incorrect");
+            } else {
+              document.getElementById(`exp-${i}-${j}`).classList.add("incorrect");
+              document.getElementById(`exp-${i}-${j}`).classList.remove("correct");
+            }
+          } else {
+            document.getElementById(`exp-${i}-${j}`).classList.remove("correct", "incorrect");
+          }
+        }
+      }
+    }
+
+    // Check marginal row totals
+    for(let i=0; i<rows; i++){
+      if(document.getElementById(`rowTotalExp-${i}`)){
+        let inputVal = parseFloat(document.getElementById(`rowTotalExp-${i}`).value);
+        if(inputVal !== undefined && !isNaN(inputVal)){
+          if(Math.abs(inputVal - rowTotalsObs[i]) < 0.01){
+            document.getElementById(`rowTotalExp-${i}`).classList.add("correct");
+            document.getElementById(`rowTotalExp-${i}`).classList.remove("incorrect");
+          } else {
+            document.getElementById(`rowTotalExp-${i}`).classList.add("incorrect");
+            document.getElementById(`rowTotalExp-${i}`).classList.remove("correct");
+          }
+        } else {
+          document.getElementById(`rowTotalExp-${i}`).classList.remove("correct", "incorrect");
+        }
+      }
+    }
+
+    // Check marginal column totals
+    for(let j=0; j<observedData[0].length; j++){
+      if(document.getElementById(`colTotalExp-${j}`)){
+        let inputVal = parseFloat(document.getElementById(`colTotalExp-${j}`).value);
+        if(inputVal !== undefined && !isNaN(inputVal)){
+          if(Math.abs(inputVal - colTotalsObs[j]) < 0.01){
+            document.getElementById(`colTotalExp-${j}`).classList.add("correct");
+            document.getElementById(`colTotalExp-${j}`).classList.remove("incorrect");
+          } else {
+            document.getElementById(`colTotalExp-${j}`).classList.add("incorrect");
+            document.getElementById(`colTotalExp-${j}`).classList.remove("correct");
+          }
+        } else {
+          document.getElementById(`colTotalExp-${j}`).classList.remove("correct", "incorrect");
+        }
+      }
+    }
+
+    // Check grand total
+    if(document.getElementById("grandTotalExp")){
+      let inputVal = parseFloat(document.getElementById("grandTotalExp").value);
+      if(inputVal !== undefined && !isNaN(inputVal)){
+        if(Math.abs(inputVal - grandTotalObs) < 0.01){
+          document.getElementById("grandTotalExp").classList.add("correct");
+          document.getElementById("grandTotalExp").classList.remove("incorrect");
+        } else {
+          document.getElementById("grandTotalExp").classList.add("incorrect");
+          document.getElementById("grandTotalExp").classList.remove("correct");
+        }
+      } else {
+        document.getElementById("grandTotalExp").classList.remove("correct", "incorrect");
+      }
+    }
+  }
+
+  function revealAnswers(){
+    const rows = observedData.length;
+    const cols = observedData[0].length;
+
+    // Fill expected freq
+    for(let i=0; i<rows; i++){
+      for(let j=0; j<cols; j++){
+        let expectedVal = (rowTotalsObs[i] * colTotalsObs[j]) / grandTotalObs;
+        if(document.getElementById(`exp-${i}-${j}`)){
+          document.getElementById(`exp-${i}-${j}`).value = expectedVal.toFixed(2);
+          document.getElementById(`exp-${i}-${j}`).classList.remove("correct","incorrect");
+        }
+      }
+    }
+
+    // Fill marginal row totals
+    for(let i=0; i<rows; i++){
+      if(document.getElementById(`rowTotalExp-${i}`)){
+        document.getElementById(`rowTotalExp-${i}`).value = rowTotalsObs[i];
+        document.getElementById(`rowTotalExp-${i}`).classList.remove("correct","incorrect");
+      }
+    }
+
+    // Fill marginal column totals
+    for(let j=0; j<cols; j++){
+      if(document.getElementById(`colTotalExp-${j}`)){
+        document.getElementById(`colTotalExp-${j}`).value = colTotalsObs[j];
+        document.getElementById(`colTotalExp-${j}`).classList.remove("correct","incorrect");
+      }
+    }
+
+    // Fill grand total
+    if(document.getElementById("grandTotalExp")){
+      document.getElementById("grandTotalExp").value = grandTotalObs;
+      document.getElementById("grandTotalExp").classList.remove("correct","incorrect");
+    }
+  }
+
+  function shuffleArray(arr){
+    let a = arr.slice();
+    for(let i=a.length-1; i>0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function init(){
+    const generateBtn = document.getElementById("generateBtn");
+    const checkBtn = document.getElementById("checkBtn");
+    const revealBtn = document.getElementById("revealBtn");
+    const tableSizeSelect = document.getElementById("tableSize");
+    const difficultySelect = document.getElementById("difficulty");
+
+    generateBtn.onclick = () => {
+      const sizeStr = tableSizeSelect.value;
+      const difficulty = difficultySelect.value;
+
+      let [rows, cols] = sizeStr.split("x").map(Number);
+
+      // Pick a variable pair that fits the selected rows and cols
+      // (We pick first that fits or fallback to any)
+      selectedPair = variablePairs.find(p => p.rowCats.length >= rows && p.colCats.length >= cols);
+      if(!selectedPair) selectedPair = variablePairs[0]; // fallback
+
+      // Reduce categories to needed size
+      selectedPair = {
+        rowVar: selectedPair.rowVar,
+        rowCats: shuffleArray(selectedPair.rowCats).slice(0, rows),
+        colVar: selectedPair.colVar,
+        colCats: shuffleArray(selectedPair.colCats).slice(0, cols)
+      };
+
+      observedData = generateObservedData(rows, cols, difficulty);
+
+      // Calculate totals for observed
+      rowTotalsObs = observedData.map(row => row.reduce((a,b)=>a+b,0));
+      colTotalsObs = [];
+      for(let j=0; j<cols; j++){
+        let sum=0;
+        for(let i=0; i<rows; i++){
+          sum+=observedData[i][j];
+        }
+        colTotalsObs[j] = sum;
+      }
+      grandTotalObs = rowTotalsObs.reduce((a,b)=>a+b,0);
+
+      renderObservedTable();
+      renderExpectedTable();
+
+      // Clear check/reveal highlight
+      document.querySelectorAll("input").forEach(i=>i.classList.remove("correct","incorrect"));
+    };
+
+    checkBtn.onclick = () => checkAnswers();
+    revealBtn.onclick = () => revealAnswers();
+  }
+
+  window.onload = init;
+
+})();
+</script>
+
+</body>
+</html>
